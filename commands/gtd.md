@@ -8,6 +8,7 @@ Research and execute tasks from Computer and Deep Work projects with intelligent
 |------|-------------|--------------|
 | **Firecrawl** | URL scraping, quick single-page reads | `mcp__firecrawl-mcp__firecrawl_scrape` |
 | **Tavily** | Deep research, multi-source comprehensive searches | `mcp__tavily__tavily_search` |
+| **BrowserBase** | Browser automation, login-required sites, interactive pages | `mcp__browserbase__*` |
 | **Zapier Gmail** | Draft/send emails, search inbox for context | `mcp__zapier__gmail_*` |
 
 ### Tool Details
@@ -21,6 +22,11 @@ Research and execute tasks from Computer and Deep Work projects with intelligent
 - Use for: "Research X" tasks, DD (Deep Dive) requests, competitive analysis
 - Function: `mcp__tavily__tavily_search`
 - Best for: Multi-source research, current events, company research, market analysis
+
+**BrowserBase** - Browser automation for interactive tasks:
+- Use for: Login-required sites, JavaScript-heavy pages, form filling, screenshots
+- Functions: `mcp__browserbase__*` (navigate, click, type, screenshot, etc.)
+- Best for: Social media monitoring, authenticated sites, complex web apps, visual verification
 
 **Zapier Gmail** - Email operations via Google Workspace:
 - `mcp__zapier__gmail_send_email` - Send drafted emails
@@ -52,6 +58,7 @@ If recent session exists (< 24h), ask: "Continue previous session or start fresh
 |----------|---------|------|--------|
 | **URL tasks** | Contains http://, https://, youtu.be | **Firecrawl** | Scrape page, summarize content |
 | **Research** | "Research X", "Find X", "Look up X" | **Tavily** | Deep multi-source search |
+| **Browser tasks** | "Check X dashboard", "Screenshot X", login-required sites | **BrowserBase** | Navigate, interact, capture |
 | **Email** | "Email X", "Send X email", "Reply to X" | **Zapier Gmail** | Draft and send email |
 | **Intro** | "Intro X to Y", "Connect X with Y" | **Zapier Gmail** | Draft intro email, CC both parties |
 | **Not helpable** | Physical tasks, calls, meetings | Skip | Mark for manual handling |
@@ -73,6 +80,13 @@ For each task type:
 2. Synthesize findings from multiple sources
 3. Include specific facts, numbers, names
 4. Cache results immediately
+
+**Browser Tasks** (BrowserBase):
+1. Launch browser session with `mcp__browserbase__*`
+2. Navigate to target URL
+3. Handle login if needed (use saved credentials or ask user)
+4. Perform action (screenshot, extract data, fill form)
+5. Cache results with screenshots if relevant
 
 **Email/Intro Tasks** (Zapier):
 1. Search inbox for prior context: `mcp__zapier__gmail_find_email`

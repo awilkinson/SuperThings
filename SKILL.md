@@ -119,6 +119,17 @@ SuperThings uses three external MCP tools for research and actions:
 - Current events and news
 - When you need synthesis from multiple sources
 
+### BrowserBase - Browser Automation
+**When to use**: Login-required sites, JavaScript-heavy pages, interactive tasks, screenshots
+**MCP Functions**: `mcp__browserbase__*` (navigate, click, type, screenshot, etc.)
+**Best for**:
+- Tasks requiring authentication/login
+- JavaScript-heavy or dynamic pages
+- Form filling and submissions
+- Taking screenshots for verification
+- Social media monitoring
+- Complex web apps that don't scrape well
+
 ### Zapier Gmail - Email Operations
 **When to use**: Email tasks, intro tasks, delegation
 **MCP Functions**:
@@ -138,6 +149,9 @@ SuperThings uses three external MCP tools for research and actions:
 | URL in task | Firecrawl | Scrape and summarize |
 | "Research X" | Tavily | Deep multi-source search |
 | "DD" command | Tavily | Expanded deep research |
+| Login-required site | BrowserBase | Navigate, authenticate, interact |
+| "Screenshot X" | BrowserBase | Capture visual state |
+| Dashboard/analytics | BrowserBase | Navigate and extract data |
 | "Email X" | Zapier | Find context → Draft → Send |
 | "Intro X to Y" | Zapier | Draft intro email → Send |
 | "D [person]" | Zapier | Draft delegation email → Send |
