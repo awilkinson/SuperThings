@@ -1,122 +1,88 @@
-# Things MCP (Silent Mode)
+# SuperThings
 
-> **Fork of [hildersantos/things-mcp](https://github.com/hildersantos/things-mcp)** with AppleScript-based write operations to prevent Things from stealing focus.
+An intelligent Things 3 integration for Claude Code that learns from your corrections and gets better over time.
 
-## What's Different in This Fork
+> **Fork of [hildersantos/things-mcp](https://github.com/hildersantos/things-mcp)** with silent AppleScript operations, learning system, and Claude Code commands.
 
-The original MCP uses URL schemes (`things:///add?...`) for write operations, which activates Things and brings it to the foreground. This fork replaces URL scheme calls with AppleScript, allowing **silent background operations**.
+## What's New in SuperThings
 
-### Changes Made
-- `src/lib/json-builder.ts` - Now uses AppleScript instead of URL schemes
-- `src/scripts/create-todo.applescript` - New: Creates todos silently
-- `src/scripts/update-todo.applescript` - New: Updates todos silently
-- `src/scripts/create-project.applescript` - New: Creates projects silently
-- `src/scripts/update-project.applescript` - New: Updates projects silently
+### Learning System
+SuperThings learns from your corrections during inbox triage:
+- **Title transforms**: Patterns like "Fix X" → "Delegate to Brianna: Fix X"
+- **Project hints**: Keywords → project mappings with confidence scores
+- **Exact overrides**: Specific title → transformation mappings
 
-### Limitations
-- Headings cannot be added to existing projects via AppleScript (only during initial creation)
-- Some edge cases in scheduling may behave slightly differently
+Suggestions show `[learned: Nx]` when based on patterns you've taught it.
 
----
+### GTD Research Workflow
+The `/gtd` command researches tasks in bulk and caches results:
+- Processes tasks from Computer and Deep Work projects
+- Visits URLs and summarizes actual content
+- Rich TLDR bullet summaries
+- Results cached for 7 days
 
-## Original README
+### Triage Commands
+After research, respond with:
+| Command | Action | Example |
+|---------|--------|---------|
+| `C` | Complete task | `1: C` |
+| `D [person]` | Delegate via email | `2: D Brianna` |
+| `DD` | Deep Dive for more | `3: DD focus on pricing` |
 
-A Model Context Protocol (MCP) server for Things 3 integration. Enables Claude Desktop and Claude Code to interact with Things 3 on macOS.
+### Silent Operations
+Uses AppleScript instead of URL schemes so Things doesn't steal focus.
 
 ## Features
 
-- Create to-dos and projects with full metadata
-- Update existing to-dos and projects
-- List items from any Things list (Inbox, Today, Logbook, Trash, etc.)
-- Retrieve all projects, areas, and tags
-- Navigate to specific items or lists
-- Search within Things
-- Secure AppleScript execution
-- Comprehensive error handling
+### MCP Server (19 tools)
+
+| Category | Tools |
+|----------|-------|
+| **Read** | get_inbox, get_today, get_upcoming, get_anytime, get_someday, get_logbook, get_trash, get_projects, get_areas, get_tags, get_project, get_area, get_list, get_todo_details |
+| **Create** | add_todo (with checklists), add_project (with headings) |
+| **Update** | update_todo, update_project, add_items_to_project |
+| **Navigate** | show |
+
+### Claude Code Commands
+
+| Command | Description |
+|---------|-------------|
+| `/thingsinbox` | Triage inbox with URL resolution, project assignment, learning |
+| `/gtd` | Research tasks with caching and batch execution |
 
 ## Requirements
 
 - macOS with Things 3 installed
 - Node.js 18 or later
-- Things URL scheme enabled (automatic on first use)
+- Claude Code
 
 ## Installation
 
-### Quick Start with npx (Recommended)
+### 1. Clone and Build
 
 ```bash
-npx github:hildersantos/things-mcp
+git clone https://github.com/awilkinson/SuperThings.git
+cd SuperThings
+npm install
+npm run build
 ```
 
-This will automatically download, build, and start the MCP server.
+### 2. Get Your Things Auth Token
 
-### Manual Installation
+1. Open Things → Settings → General
+2. Enable Things URLs
+3. Click Manage → Copy Token
 
-1. Clone this repository:
-   ```bash
-   git clone https://github.com/hildersantos/things-mcp.git
-   cd things-mcp
-   ```
+### 3. Configure Claude Code
 
-2. Install dependencies:
-   ```bash
-   npm install
-   ```
+Add to your `~/.claude/claude.json`:
 
-3. Build the project:
-   ```bash
-   npm run build
-   ```
-
-4. Start the server:
-   ```bash
-   npm start
-   ```
-
-## Configuration
-
-### Claude Desktop Setup
-
-1. **Get your Things auth token** (required for update operations):
-   - Open Things → Settings → General
-   - Enable Things URLs
-   - Click Manage → Copy Token
-
-2. **Configure Claude Desktop**:
-   
-   Open your Claude Desktop configuration file:
-   ```bash
-   ~/Library/Application Support/Claude/claude_desktop_config.json
-   ```
-
-   Add the Things MCP server to the `mcpServers` section:
-   ```json
-   {
-     "mcpServers": {
-       "things-mcp": {
-         "command": "npx",
-         "args": ["github:hildersantos/things-mcp"],
-         "env": {
-           "THINGS_AUTH_TOKEN": "your-token-here"
-         }
-       }
-     }
-   }
-   ```
-
-   Replace `your-token-here` with your actual Things auth token from step 1.
-
-3. **Restart Claude Desktop** to apply the configuration changes.
-
-### Alternative: Local Installation
-
-If you prefer to install locally instead of using npx:
 ```json
 {
   "mcpServers": {
     "things-mcp": {
       "command": "node",
-      "args": ["/absolute/path/to/things-mcp/dist/index.js"],
+      "args": ["/path/to/SuperThings/dist/index.js"],
       "env": {
         "THINGS_AUTH_TOKEN": "your-token-here"
       }
@@ -125,119 +91,124 @@ If you prefer to install locally instead of using npx:
 }
 ```
 
-## Usage Examples
+Replace `/path/to/SuperThings` with the actual path and add your auth token.
 
-### Create a To-Do
-```
-Create a task "Buy milk" for today with tag "errands" in Things
-```
+### 4. Install Commands
 
-### Create a Simple Project
-```
-Create a "Website Redesign" project in Things in my Work area
-```
+Create symlinks in your Claude commands directory:
 
-### Create a Complex Project
-```
-Plan a vacation to Japan in Things with research about destinations, booking flights and hotels, 
-creating a packing list, and planning daily activities
+```bash
+mkdir -p ~/.claude/commands
+ln -sf /path/to/SuperThings/commands/thingsinbox.md ~/.claude/commands/thingsinbox.md
+ln -sf /path/to/SuperThings/commands/gtd.md ~/.claude/commands/gtd.md
 ```
 
-### Another Project Example
-```
-Set up a new employee onboarding project in Things with IT setup tasks, HR paperwork, 
-training schedule, and first week activities
+### 5. Initialize Learning Data
+
+```bash
+mkdir -p /path/to/SuperThings/data
+echo '{"title_transforms":[],"project_hints":{},"exact_overrides":{}}' > /path/to/SuperThings/data/patterns.json
+echo '{"last_updated":null,"sessions":{}}' > /path/to/SuperThings/data/research-cache.json
 ```
 
-### Update a To-Do
+## Usage
+
+### Inbox Triage
+
 ```
-Mark task ABC-123 as completed in Things
+/thingsinbox
 ```
 
-### Add Items to Existing Project
+Shows your inbox tasks with suggested titles and project assignments:
+
 ```
-Add new tasks to my "Website Redesign" project in Things: create wireframes, design mockups, and user testing
+Inbox (44) | C=Computer D=Deep O=Out P=Call
+
+┌─ 1 ─────────────────────────────────────────────────── C ✎
+│  https://youtu.be/pE3KKUKXcTM...
+│  ↓
+│  Watch: Semiconductor Industry Works
+├─ 2 ─────────────────────────────────────────────────── C ✎
+│  Fix fireplace
+│  ↓
+│  Delegate to Brianna: Fix fireplace        [learned: 12x]
+├─ 3 ─────────────────────────────────────────────────── C
+│  Research competitor pricing
 ```
 
-### List Tasks
+Reply with numbers to approve (e.g., `1,2,5-10` or `all`).
+
+### GTD Research
+
 ```
-Show me all tasks in my Things inbox
+/gtd
 ```
 
-### View Projects
-```
-List all my projects in Things
-```
+Researches tasks from Computer and Deep Work projects:
 
-### Navigate
 ```
-Open my Today list in Things
-```
+Research Complete: 32 tasks processed
 
-### Get Task Details
-```
-Get full details for task TBeaUrcGH1zKoMmS7wwHVD from Things
-```
-
-### Search
-```
-Search for "meeting" in Things
-```
-
-### View Completed Tasks
-```
-Show me my completed tasks from the Things logbook
+┌─ 1 ─────────────────────────────────────────────────────────
+│  Research competitor pricing
+│
+│  • Found 5 competitors: Acme ($15/mo), Beta ($25/mo)...
+│  • Enterprise tiers range $100-500/seat
+│  • Key differentiator: only Gamma has API at base tier
+│  • Sources: G2, Capterra, pricing pages
+│
+├─ 2 ─────────────────────────────────────────────────────────
+│  https://youtu.be/abc123
+│
+│  • Video: "The Future of AI" by Sam Altman (45 min)
+│  • Key points: GPT-5 roadmap, multimodal focus
+│  • Source: visited link, summarized content
 ```
 
-## Available Tools
+Reply with triage commands:
+```
+1: C
+2: D Brianna please handle by Friday
+3: DD focus on North American competitors only
+```
 
-### Creation Tools
-- `things_add_todo` - Create a to-do with all options
-- `things_add_project` - Create a project with sections (headings), todos, and hierarchical organization
+## Project IDs
 
-### Update Tools (requires auth token)
-- `things_update_todo` - Update an existing to-do using JSON API for full feature support
-- `things_update_project` - Update an existing project using JSON API for full feature support
-- `things_add_items_to_project` - Add structured todos and headings to an existing project
-
-### Reading Tools
-- `things_get_inbox` - List inbox items
-- `things_get_today` - List today's items
-- `things_get_upcoming` - List scheduled items
-- `things_get_anytime` - List anytime items
-- `things_get_someday` - List someday items
-- `things_get_logbook` - List completed items
-- `things_get_trash` - List trashed items
-- `things_get_projects` - List all active projects
-- `things_get_areas` - List all areas
-- `things_get_tags` - List all tags
-- `things_get_project` - List items in a specific project (requires project_id)
-- `things_get_area` - List items in a specific area (requires area_id)
-- `things_get_list` - Get items from a specific list by name
-- `things_get_todo_details` - Get detailed information about a specific to-do
-
-All list tools support an optional `max_results` parameter to limit output.
-
-### Navigation Tools
-- `things_show` - Navigate to item or list
+Reference for Things projects:
+- Computer: `LDhUsibk3dp2ZPioQySSiu`
+- Deep Work: `WamuBi2sFwbUwpXz9NZetP`
+- Call: `Er67bc9YAur6ZeKTCBLC4c`
+- Home: `NsSR9HR3pd2bVi2z4QHFfM`
+- Out and About: `5LwYiPJAkWGSCMHML8xaXb`
+- Kids/Activities: `7n14Jusf7nCrLADfAANabW`
+- Someday: `EZ5uJWRtcrvJ4U852NkNQ8`
 
 ## Development
 
 ```bash
-# Development mode with watch
-npm run dev
+npm run dev      # Watch mode
+npm run lint     # Run linter
+npm run format   # Format code
+npm test         # Run tests
+```
 
-# Run linter
-npm run lint
+## File Structure
 
-# Format code
-npm run format
-
-# Run tests
-npm test
-
-# Run tests in watch mode
-npm run test:watch
+```
+SuperThings/
+├── src/                    # MCP server TypeScript source
+├── dist/                   # Compiled MCP server
+├── commands/               # Claude Code slash commands
+│   ├── thingsinbox.md     # Inbox triage with learning
+│   └── gtd.md             # GTD workflow with caching
+├── data/                   # Learning data
+│   ├── patterns.json      # Learned patterns
+│   ├── history.jsonl      # Correction history
+│   └── research-cache.json # GTD research cache
+├── SKILL.md               # Skill instructions for Claude
+├── CLAUDE.md              # Dev instructions
+├── CHANGELOG.md           # Version history
+└── LICENSE                # MIT
 ```
 
 ## Troubleshooting
@@ -249,19 +220,17 @@ Make sure Things 3 is installed and has been opened at least once.
 Check that your THINGS_AUTH_TOKEN is correctly set in the MCP configuration.
 
 ### AppleScript Permissions
-On first run, macOS may ask for permission to control Things. Grant this permission for the MCP to work.
+On first run, macOS may ask for permission to control Things. Grant this permission.
 
-### Performance Issues
-Use the `max_results` parameter when listing large collections:
-```
-Use things_get_projects with max_results 10
-```
+### Learning Not Working
+Check that `data/patterns.json` exists and is writable.
 
 ## License
 
-MIT
+MIT - See [LICENSE](LICENSE) for details.
 
 ## Credits
 
-Built with the [Model Context Protocol SDK](https://github.com/anthropics/mcp).
-Things is a trademark of Cultured Code GmbH & Co. KG.
+- Original MCP: [hildersantos/things-mcp](https://github.com/hildersantos/things-mcp)
+- Built with [Model Context Protocol SDK](https://github.com/anthropics/mcp)
+- Things is a trademark of Cultured Code GmbH & Co. KG

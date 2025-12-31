@@ -97,8 +97,60 @@ Current Things projects:
 - `NsSR9HR3pd2bVi2z4QHFfM` - Home
 - `WamuBi2sFwbUwpXz9NZetP` - Deep Work
 
+## Research Cache System
+
+GTD research results are cached to `~/Projects/SuperThings/data/research-cache.json`:
+
+```json
+{
+  "last_updated": "ISO-timestamp",
+  "sessions": {
+    "session-id": {
+      "started_at": "ISO-timestamp",
+      "tasks_researched": 32,
+      "results": [
+        {
+          "task_id": "Things-UUID",
+          "task_title": "Research competitor pricing",
+          "researched_at": "ISO-timestamp",
+          "findings": "Full research text...",
+          "sources": ["url1", "url2"],
+          "user_decision": "complete|delegate|deepdive|pending",
+          "notes_updated": true
+        }
+      ]
+    }
+  }
+}
+```
+
+### Cache Behavior
+- Results persist for 7 days
+- Use `/gtd resume` to continue a previous session
+- Say "details N" to expand cached findings
+
+### URL Task Handling
+When a task contains a URL, research agents MUST:
+1. Visit the link first using Firecrawl
+2. Summarize actual page content
+3. Include key points and why the user likely saved it
+4. Mark source as "visited link" (not web search)
+
+## GTD Triage Commands
+
+After research display, respond with commands:
+
+| Command | Action | Example |
+|---------|--------|---------|
+| `C` | Complete task | `1: C` |
+| `C [note]` | Complete with note | `1: C already handled` |
+| `D [person]` | Delegate via Zapier email | `2: D Brianna` |
+| `D [person] [modifier]` | Delegate with context | `2: D Brianna within the next week` |
+| `DD` | Deep Dive - more research | `3: DD` |
+| `DD [focus]` | Deep Dive with focus | `3: DD focus on enterprise pricing` |
+
 ## Commands
 
 This plugin provides these slash commands:
 - `/thingsinbox` - Triage inbox with learning-based suggestions
-- `/gtd` - Get Things Done workflow
+- `/gtd` - Get Things Done workflow with research caching
