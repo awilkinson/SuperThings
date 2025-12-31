@@ -87,26 +87,30 @@ on run argv
             end if
         end if
 
-        -- Handle list assignment (by ID)
+        -- Handle list assignment (by ID) - use set property, not move command
         if newListId is not "" then
             try
-                move targetTodo to project id newListId
+                set project of targetTodo to project id newListId
             on error
                 try
-                    move targetTodo to area id newListId
+                    set area of targetTodo to area id newListId
                 end try
             end try
         else if newList is not "" then
             if newList is "inbox" or newList is "Inbox" then
-                move targetTodo to list "Inbox"
+                -- To move to Inbox, detach from current project/area
+                try
+                    delete project of targetTodo
+                end try
+                try
+                    delete area of targetTodo
+                end try
             else
                 try
-                    set targetProject to first project whose name is newList
-                    move targetTodo to targetProject
+                    set project of targetTodo to project newList
                 on error
                     try
-                        set targetArea to first area whose name is newList
-                        move targetTodo to targetArea
+                        set area of targetTodo to area newList
                     end try
                 end try
             end if
