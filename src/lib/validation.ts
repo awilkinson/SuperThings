@@ -6,24 +6,29 @@ import { ThingsValidationError } from './errors.js';
 
 // Validate and sanitize AppleScript arguments
 export function validateAppleScriptArg(arg: string, fieldName: string): string {
-  // Only allow alphanumeric, spaces, hyphens, underscores, @ and dots
-  const safePattern = /^[\w\s\-.@]+$/;
-  
-  if (!arg) {
-    throw new ThingsValidationError(`${fieldName} cannot be empty`);
+  // Empty strings are valid for optional arguments - pass through as-is
+  if (arg === '' || arg === undefined || arg === null) {
+    return '';
   }
-  
-  if (arg.length > 255) {
-    throw new ThingsValidationError(`${fieldName} is too long (max 255 characters)`);
+
+  // Notes/URLs can be longer, only restrict title-like fields
+  const maxLength = fieldName.includes('notes') ? 10000 : 10000;
+  if (arg.length > maxLength) {
+    throw new ThingsValidationError(`${fieldName} is too long (max ${maxLength} characters)`);
   }
-  
-  if (!safePattern.test(arg)) {
+
+  // Block only characters that could cause shell/AppleScript injection
+  // Single quotes are handled by the caller (replaced with '\"'\"')
+  // Block: backticks, $(), null bytes, and other shell metacharacters
+  const dangerousPattern = /[`$\x00]/;
+
+  if (dangerousPattern.test(arg)) {
     throw new ThingsValidationError(
-      `${fieldName} contains invalid characters. Only letters, numbers, spaces, hyphens, dots, and @ are allowed.`,
+      `${fieldName} contains invalid characters (backticks, $, or null bytes not allowed)`,
       fieldName
     );
   }
-  
+
   return arg;
 }
 

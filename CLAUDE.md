@@ -4,7 +4,35 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-This is a TypeScript-based MCP (Model Context Protocol) server for integrating with Things 3, a task management application. The project uses ES modules and strict TypeScript configuration.
+**SuperThings** is an intelligent Things 3 integration plugin that:
+- Provides an MCP server for Things 3 task management
+- Includes Claude Code commands for inbox triage and GTD workflows
+- **Learns from your corrections** to improve title suggestions and project assignments over time
+
+## Plugin Structure
+
+```
+SuperThings/
+├── src/                    # MCP server TypeScript source
+├── dist/                   # Compiled MCP server
+├── commands/               # Claude Code slash commands
+│   ├── thingsinbox.md     # Inbox triage with learning
+│   └── gtd.md             # GTD workflow
+├── data/                   # Learning data
+│   ├── patterns.json      # Learned patterns
+│   └── history.jsonl      # Correction history
+├── SKILL.md               # Skill instructions for Claude
+└── CLAUDE.md              # This file
+```
+
+## Learning System
+
+The plugin learns from corrections made during inbox triage:
+- **Title transforms**: Regex patterns for title rewrites
+- **Project hints**: Keyword → project mappings with confidence
+- **Exact overrides**: Specific title mappings
+
+Patterns are stored in `data/patterns.json` and history in `data/history.jsonl`.
 
 ## Development Commands
 
