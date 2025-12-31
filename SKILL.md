@@ -97,6 +97,51 @@ Current Things projects:
 - `NsSR9HR3pd2bVi2z4QHFfM` - Home
 - `WamuBi2sFwbUwpXz9NZetP` - Deep Work
 
+## External Tools
+
+SuperThings uses three external MCP tools for research and actions:
+
+### Firecrawl - Quick Research / URL Scraping
+**When to use**: URL tasks, single-page reads, video metadata
+**MCP Function**: `mcp__firecrawl-mcp__firecrawl_scrape`
+**Best for**:
+- Scraping URLs from Things tasks
+- YouTube video summaries
+- GitHub repos, articles, product pages
+- Quick single-source lookups
+
+### Tavily - Deep Research
+**When to use**: "Research X" tasks, DD (Deep Dive), competitive analysis
+**MCP Function**: `mcp__tavily__tavily_search`
+**Best for**:
+- Multi-source comprehensive research
+- Company research, market analysis
+- Current events and news
+- When you need synthesis from multiple sources
+
+### Zapier Gmail - Email Operations
+**When to use**: Email tasks, intro tasks, delegation
+**MCP Functions**:
+- `mcp__zapier__gmail_send_email` - Send drafted emails
+- `mcp__zapier__gmail_create_draft` - Save as draft for review
+- `mcp__zapier__gmail_find_email` - Search inbox for context
+**Best for**:
+- "Email X" tasks
+- "Intro X to Y" tasks
+- "D [person]" delegation commands
+- Finding prior conversation context
+
+### Tool Selection Logic
+
+| Task Type | Tool | Action |
+|-----------|------|--------|
+| URL in task | Firecrawl | Scrape and summarize |
+| "Research X" | Tavily | Deep multi-source search |
+| "DD" command | Tavily | Expanded deep research |
+| "Email X" | Zapier | Find context → Draft → Send |
+| "Intro X to Y" | Zapier | Draft intro email → Send |
+| "D [person]" | Zapier | Draft delegation email → Send |
+
 ## Research Cache System
 
 GTD research results are cached to `~/Projects/SuperThings/data/research-cache.json`:
@@ -129,12 +174,12 @@ GTD research results are cached to `~/Projects/SuperThings/data/research-cache.j
 - Use `/gtd resume` to continue a previous session
 - Say "details N" to expand cached findings
 
-### URL Task Handling
-When a task contains a URL, research agents MUST:
-1. Visit the link first using Firecrawl
-2. Summarize actual page content
-3. Include key points and why the user likely saved it
-4. Mark source as "visited link" (not web search)
+### URL Task Handling (Firecrawl)
+When a task contains a URL, use `mcp__firecrawl-mcp__firecrawl_scrape`:
+1. Scrape the URL to get page content
+2. Extract title, description, key content
+3. Summarize with TLDR bullets
+4. Mark source as "Firecrawl (visited link)"
 
 ## GTD Triage Commands
 

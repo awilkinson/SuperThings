@@ -145,12 +145,21 @@ Runs on Haiku, but **auto-escalates to Sonnet** when hitting speedbumps:
 
 8. **Update cache** after changes are made
 
-## URL Resolution
+## URL Resolution (Firecrawl)
 
-For URL tasks, launch parallel agents (using haiku) to fetch content:
-- Use `mcp__firecrawl-mcp__firecrawl_scrape` for full page content
-- Extract title and brief description
-- Create actionable task title
+For URL tasks, use **Firecrawl** to fetch and summarize content:
+
+**Tool**: `mcp__firecrawl-mcp__firecrawl_scrape`
+
+Launch parallel agents (using haiku model) to resolve URLs:
+1. Scrape URL with `mcp__firecrawl-mcp__firecrawl_scrape`
+2. Extract title, description, and key content
+3. Create actionable task title based on content type:
+   - YouTube: "Watch: [Video Title] - [Creator]"
+   - GitHub: "Review: [Repo Name] - [Description]"
+   - Article: "Read: [Article Title]"
+   - Product: "Check out: [Product Name]"
+4. Move original URL to notes field
 
 ## Project IDs Reference
 - Computer: `LDhUsibk3dp2ZPioQySSiu`
