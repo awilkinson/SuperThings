@@ -103,3 +103,76 @@ This project follows a pragmatic TDD (Test-Driven Development) approach:
 - `urlscheme.ts`: Test URL construction and auth handling, but not parameter validation
 - `applescript.ts`: Test secure execution and parsing, mock actual execution
 - Tool handlers: Test orchestration and responses, trust already-tested libraries
+
+## Email Lookup Integration
+
+When using SuperThings and a person is mentioned, automatically resolve their email address before proceeding.
+
+### Auto-Trigger
+
+Apply this workflow when:
+- Todo involves contacting someone by name
+- User mentions a person without providing their email
+- Keywords appear: "email", "contact", "reach out", "follow up with", "send to"
+- Any task that would benefit from having someone's email address
+
+### Lookup Cascade
+
+Always follow this order:
+
+1. **Check Cache First**: Read `~/.claude/data/email-cache.json` for existing entries (key format: `lowercase name|domain`)
+
+2. **Gmail/Contacts Search**: Use `mcp__zapier__gmail_find_email` with the person's name
+
+3. **Hunter API**: If Gmail doesn't find the email, use Hunter MCP server:
+   - Infer the company domain from context
+   - Use Hunter to find email by name + domain
+   - Verify the email if needed
+
+4. **Ask User**: If all lookups fail, ask for the email address
+
+### Domain Inference
+
+Infer company domain from context clues:
+
+| Context | Inferred Domain |
+|---------|-----------------|
+| "John at Acme Corp" | acme.com, acmecorp.com |
+| "Sarah from Google" | google.com |
+| Company mentioned in conversation | that company's domain |
+| LinkedIn profile visible | company from profile |
+
+Try common patterns: `company.com`, `companyinc.com`, `thecompany.com`, `company.io`
+
+### Caching Results
+
+After finding an email, update `~/.claude/data/email-cache.json`:
+
+```json
+{
+  "contacts": {
+    "john smith|acme": {
+      "email": "john.smith@acme.com",
+      "source": "hunter",
+      "found": "2025-01-01",
+      "verified": true
+    }
+  }
+}
+```
+
+### Example Flow
+
+**User says:** "Create a todo to email John Smith at Acme about the proposal"
+
+1. Check cache for `john smith|acme` → not found
+2. Gmail search for "John Smith" → no matching contacts
+3. Hunter: find email for "John Smith" at "acme.com" → `john.smith@acme.com`
+4. Update cache with new entry
+5. Create todo: "Email John Smith about the proposal" with `john.smith@acme.com` in notes
+
+### Tool Reference
+
+- **Gmail**: `mcp__zapier__gmail_find_email` with query containing person name
+- **Hunter**: Use Hunter MCP tools to find/verify emails by name + domain
+- **Cache**: `~/.claude/data/email-cache.json` (syncs via GitHub)
