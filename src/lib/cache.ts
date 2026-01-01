@@ -11,6 +11,11 @@ interface CacheEntry<T> {
 
 class InMemoryCache {
   private cache = new Map<string, CacheEntry<unknown>>();
+  private maxEntries: number;
+
+  constructor(maxEntries: number = 100) {
+    this.maxEntries = maxEntries;
+  }
 
   /**
    * Get a cached value if it exists and hasn't expired
@@ -31,11 +36,20 @@ class InMemoryCache {
 
   /**
    * Set a cached value with TTL
+   * Evicts oldest entry if cache is full
    * @param key Cache key
    * @param data Data to cache
    * @param ttlMs Time to live in milliseconds (default 60 seconds)
    */
   set<T>(key: string, data: T, ttlMs: number = 60000): void {
+    // Evict oldest entry if at capacity (and not updating existing key)
+    if (this.cache.size >= this.maxEntries && !this.cache.has(key)) {
+      const oldestKey = this.cache.keys().next().value;
+      if (oldestKey) {
+        this.cache.delete(oldestKey);
+      }
+    }
+
     this.cache.set(key, {
       data,
       timestamp: Date.now(),
@@ -65,6 +79,13 @@ class InMemoryCache {
   has(key: string): boolean {
     return this.get(key) !== null;
   }
+
+  /**
+   * Get current cache size (for debugging/monitoring)
+   */
+  size(): number {
+    return this.cache.size;
+  }
 }
 
 // Singleton instance for global use
@@ -84,3 +105,26 @@ export const CACHE_KEYS = {
 
 // Default TTL: 1 minute
 export const DEFAULT_CACHE_TTL = 60 * 1000;
+
+/**
+ * Invalidate caches that might be affected by todo/project changes
+ * More targeted than cache.clear() - preserves unaffected caches
+ */
+export function invalidateTodoCaches(): void {
+  // Todos can appear in any of these lists
+  cache.delete(CACHE_KEYS.INBOX);
+  cache.delete(CACHE_KEYS.TODAY);
+  cache.delete(CACHE_KEYS.UPCOMING);
+  cache.delete(CACHE_KEYS.ANYTIME);
+  cache.delete(CACHE_KEYS.SOMEDAY);
+  // Note: PROJECTS, AREAS, TAGS are not affected by todo changes
+}
+
+/**
+ * Invalidate caches that might be affected by project changes
+ */
+export function invalidateProjectCaches(): void {
+  cache.delete(CACHE_KEYS.PROJECTS);
+  // Projects can also affect todo lists if todos are moved
+  invalidateTodoCaches();
+}

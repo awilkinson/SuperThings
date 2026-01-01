@@ -1,7 +1,7 @@
 import { jsonBuilder } from '../lib/json-builder.js';
 import { UpdateTodoJSONSchema, UpdateProjectJSONSchema, AddItemsToProjectSchema } from '../types/mcp.js';
 import { AbstractToolHandler, ToolDefinition } from '../lib/abstract-tool-handler.js';
-import { cache } from '../lib/cache.js';
+import { invalidateTodoCaches, invalidateProjectCaches } from '../lib/cache.js';
 import { z } from 'zod';
 
 type UpdateJSONParams = any; // Temporary type simplification
@@ -35,19 +35,18 @@ class UpdateJSONToolHandler extends AbstractToolHandler<UpdateJSONParams> {
     if (toolName === 'things_update_todo') {
       const todoParams = params as z.infer<typeof UpdateTodoJSONSchema>;
       result = await jsonBuilder.updateTodo(todoParams);
+      invalidateTodoCaches();
     } else if (toolName === 'things_update_project') {
       const projectParams = params as z.infer<typeof UpdateProjectJSONSchema>;
       result = await jsonBuilder.updateProject(projectParams);
+      invalidateProjectCaches();
     } else if (toolName === 'things_add_items_to_project') {
       const addItemsParams = params as z.infer<typeof AddItemsToProjectSchema>;
       result = await jsonBuilder.addItemsToProject(addItemsParams);
+      invalidateTodoCaches(); // Adding items to project affects todo lists
     } else {
       throw new Error(`Unknown tool: ${toolName}`);
     }
-
-    // Invalidate all caches after any write operation
-    // Things state has changed, so cached data may be stale
-    cache.clear();
 
     return result;
   }

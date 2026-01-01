@@ -1,7 +1,7 @@
 import { jsonBuilder } from '../lib/json-builder.js';
 import { AddTodoSchema, AddProjectSchema } from '../types/mcp.js';
 import { AbstractToolHandler, ToolDefinition } from '../lib/abstract-tool-handler.js';
-import { cache } from '../lib/cache.js';
+import { invalidateTodoCaches, invalidateProjectCaches } from '../lib/cache.js';
 import { z } from 'zod';
 
 type AddParams = z.infer<typeof AddTodoSchema> | z.infer<typeof AddProjectSchema>;
@@ -30,16 +30,14 @@ class AddToolHandler extends AbstractToolHandler<AddParams> {
     if (toolName === 'things_add_todo') {
       const todoParams = params as z.infer<typeof AddTodoSchema>;
       result = await jsonBuilder.createTodo(todoParams);
+      invalidateTodoCaches();
     } else if (toolName === 'things_add_project') {
       const projectParams = params as z.infer<typeof AddProjectSchema>;
       result = await jsonBuilder.createProject(projectParams);
+      invalidateProjectCaches();
     } else {
       throw new Error(`Unknown tool: ${toolName}`);
     }
-
-    // Invalidate all caches after any write operation
-    // Things state has changed, so cached data may be stale
-    cache.clear();
 
     return result;
   }
