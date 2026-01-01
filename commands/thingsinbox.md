@@ -120,6 +120,27 @@ Runs on Haiku, but **auto-escalates to Sonnet** when hitting speedbumps:
 
 6. **Execute updates** using `mcp__SuperThings__things_update_todo` for approved items
 
+7. **MANDATORY: Log and Learn** - After executing updates, you MUST:
+
+   a) **Append to history.jsonl** - For EACH processed item:
+   ```bash
+   echo '{"ts":"'$(date -u +%Y-%m-%dT%H:%M:%SZ)'","original":"ORIGINAL_TITLE","suggested":"SUGGESTED_TITLE","final":"FINAL_TITLE","project":"PROJECT_NAME","accepted":true}' >> ~/Projects/SuperThings/data/history.jsonl
+   ```
+
+   b) **Update patterns.json** if user made corrections:
+   - Read current: `cat ~/Projects/SuperThings/data/patterns.json`
+   - If title was changed differently than suggested, add to `exact_overrides`
+   - If pattern emerges (e.g., "Fix X" → "Delegate: Fix X"), add to `title_transforms`
+   - Write updated JSON back to file
+
+   **Example pattern to learn:**
+   If user changed "Fix garage" → "Delegate to Brianna: Fix garage", add:
+   ```json
+   {"title_transforms": [{"match": "^Fix ", "replace": "Delegate to Brianna: Fix ", "confidence": 1}]}
+   ```
+
+   **Skip learning only if:** User explicitly cancels or no items were processed
+
 ## URL Resolution (Firecrawl)
 
 For URL tasks, use **Firecrawl** to fetch and summarize content:
@@ -145,37 +166,39 @@ Launch parallel agents (using haiku model) to resolve URLs:
 - Kids/Activities: `7n14Jusf7nCrLADfAANabW`
 - Someday: `EZ5uJWRtcrvJ4U852NkNQ8`
 
-## Learning from Corrections
+## Learning System Details
 
-**After user approves/modifies suggestions, log and learn:**
+The learning happens in Step 7 above. Here's how patterns work:
 
-### Step 1: Log corrections to history
-For each processed task, append to `~/Projects/SuperThings/data/history.jsonl`:
+### Pattern Types
 
+**1. exact_overrides** - Exact title → new title mappings
 ```json
-{"ts": "ISO-timestamp", "original": "Fix fireplace", "suggested_title": "Delegate to Brianna: Fix fireplace", "final_title": "Delegate to Brianna: Fix fireplace", "suggested_project": "Computer", "final_project": "Computer", "title_accepted": true, "project_accepted": true}
+{"exact_overrides": {"Fix fireplace": "Delegate to Brianna: Fix fireplace"}}
 ```
 
-### Step 2: Update patterns.json
+**2. title_transforms** - Regex-based transformations
+```json
+{"title_transforms": [
+  {"match": "^Fix ", "replace": "Delegate to Brianna: Fix ", "confidence": 5}
+]}
+```
 
-**If user accepted suggestion as-is:**
-- Increment confidence of matching pattern by 1
+**3. project_hints** - Keyword → project mappings
+```json
+{"project_hints": {"dentist": {"project": "Call", "count": 3}}}
+```
 
-**If user modified the title:**
-- Extract the transformation pattern
-- If similar pattern exists: update it
-- If new pattern: add to `title_transforms` with confidence=1
-- Add the original title to `examples` array
+### Confidence Scoring
 
-**If user changed the project:**
-- Update `project_hints` - increment the chosen project's count for relevant keywords
+- New pattern starts at confidence=1
+- Each time pattern is used and accepted: confidence++
+- Patterns with confidence >= 3 show `[learned: Nx]`
+- Higher confidence = higher priority when multiple patterns match
 
-**Example pattern extraction:**
-- User changes "Fix garage door" → "Ask Brianna to fix garage door"
-- Learn: `{"match": "^Fix ", "transform": "Ask Brianna to fix {remainder}", "confidence": 1}`
+### Reading History
 
-### Step 3: Write updated patterns
-Read current patterns.json, apply updates, write back.
+To see past decisions: `cat ~/Projects/SuperThings/data/history.jsonl | tail -20`
 
 ## Execution
 
