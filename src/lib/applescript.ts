@@ -12,7 +12,12 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 export interface ExecuteOptions {
   timeout?: number;  // in milliseconds
   maxResults?: number;
+  retries?: number;  // number of retry attempts (default: 2)
+  retryDelay?: number; // delay between retries in ms (default: 1000)
 }
+
+// Helper to sleep between retries
+const sleep = (ms: number): Promise<void> => new Promise(resolve => setTimeout(resolve, ms));
 
 /**
  * Execute AppleScript file with arguments (SECURE VERSION)
@@ -23,54 +28,69 @@ export async function executeAppleScriptFile(
   args: string[] = [],
   options: ExecuteOptions = {}
 ): Promise<string> {
-  const { timeout = 30000, maxResults } = options;
+  const { timeout = 30000, maxResults, retries = 2, retryDelay = 1000 } = options;
   const scriptPath = path.join(__dirname, '..', 'scripts', `${scriptName}.applescript`);
-  
+
   // Validate script exists
   try {
     await readFile(scriptPath, 'utf-8');
   } catch {
     throw new ThingsScriptError(scriptName, 'Script file not found');
   }
-  
+
   // Validate and sanitize all arguments
-  const safeArgs = args.map((arg, index) => 
+  const safeArgs = args.map((arg, index) =>
     validateAppleScriptArg(arg, `argument[${index}]`)
   );
-  
+
   // Add maxResults as last argument if specified
   if (maxResults !== undefined) {
     safeArgs.push(String(maxResults));
   }
-  
+
   // Build command with proper escaping
   // Using single quotes and escaping any single quotes in arguments
   const quotedArgs = safeArgs.map(arg => `'${arg.replace(/'/g, "'\"'\"'")}'`);
   const command = `osascript "${scriptPath}" ${quotedArgs.join(' ')}`;
-  
-  try {
-    const { stdout, stderr } = await execAsync(command, { 
-      timeout,
-      maxBuffer: 1024 * 1024 * 10 // 10MB buffer for large lists
-    });
-    
-    if (stderr) {
-      console.warn(`AppleScript warning (${scriptName}):`, stderr);
+
+  // Execute with retry logic
+  let lastError: Error | null = null;
+
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      const { stdout, stderr } = await execAsync(command, {
+        timeout,
+        maxBuffer: 1024 * 1024 * 10 // 10MB buffer for large lists
+      });
+
+      if (stderr) {
+        console.warn(`AppleScript warning (${scriptName}):`, stderr);
+      }
+
+      return stdout.trim();
+    } catch (error: unknown) {
+      const errorObj = error as { code?: string; stderr?: string; message?: string };
+
+      // Don't retry on timeouts - they're likely to timeout again
+      if (errorObj.code === 'ETIMEDOUT') {
+        throw new ThingsTimeoutError(scriptName, timeout);
+      }
+
+      lastError = new ThingsScriptError(
+        scriptName,
+        errorObj.stderr || errorObj.message || 'Unknown error'
+      );
+
+      // If we have retries left, wait and try again
+      if (attempt < retries) {
+        console.warn(`AppleScript attempt ${attempt + 1} failed for ${scriptName}, retrying in ${retryDelay}ms...`);
+        await sleep(retryDelay);
+      }
     }
-    
-    return stdout.trim();
-  } catch (error: unknown) {
-    const errorObj = error as { code?: string; stderr?: string; message?: string };
-    
-    if (errorObj.code === 'ETIMEDOUT') {
-      throw new ThingsTimeoutError(scriptName, timeout);
-    }
-    
-    throw new ThingsScriptError(
-      scriptName, 
-      errorObj.stderr || errorObj.message || 'Unknown error'
-    );
   }
+
+  // All retries exhausted
+  throw lastError;
 }
 
 /**

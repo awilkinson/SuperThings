@@ -116,11 +116,52 @@ Runs on Haiku, but **auto-escalates to Sonnet** when hitting speedbumps:
    - Project codes: C=Computer, D=Deep, O=Out&About, P=Call, K=Kids
    - Keep divider line ~60 chars wide
 
-5. **Wait for user approval**: User replies with numbers (e.g., "1,2,5-10" or "all")
+5. **Show preview summary** after the cards:
+   ```
+   ─────────────────────────────────────────────────────────────
+   Preview: 12 items
+   ├─ 3 title rewrites (✎)
+   ├─ 8 project moves
+   ├─ 1 delegation
+   └─ 2 learned patterns applied
 
-6. **Execute updates** using `mcp__SuperThings__things_update_todo` for approved items
+   Reply: numbers (1,3,5-8), "all", "skip N", or "S3" to snooze
+   ```
 
-7. **MANDATORY: Log and Learn** - After executing updates, you MUST:
+   **Summary categories:**
+   - **Title rewrites (✎)**: Count of items where title changes
+   - **Project moves**: Items moving to a project (no title change)
+   - **Delegations**: Items reformatted as "Delegate to..."
+   - **Learned patterns**: Count of suggestions from patterns.json
+   - **URLs resolved**: Count of URL tasks with new titles
+
+6. **Wait for user approval**: User replies with:
+   - Numbers: `1,3,5-8` - approve specific items
+   - `all` - approve everything
+   - `skip N` - approve all except item N
+   - `S3` or `snooze 3` - snooze item 3 for 1 week (sets `when` to +7 days)
+   - `S3 2w` - snooze item 3 for 2 weeks
+   - `S3 1m` - snooze item 3 for 1 month
+
+   **Snooze behavior:**
+   - Snoozed items are NOT processed in current batch
+   - Sets `when` to future date, removes from inbox
+   - Item reappears in Today on the scheduled date
+
+7. **Execute updates** using `mcp__SuperThings__things_update_todo` for approved items
+
+   **For snoozed items**, calculate the date and update:
+   ```
+   # Snooze for 1 week (default)
+   mcp__SuperThings__things_update_todo with:
+     id: <item_id>
+     when: <date 7 days from now in YYYY-MM-DD format>
+
+   # Snooze durations:
+   # 1w = 7 days, 2w = 14 days, 1m = 30 days
+   ```
+
+8. **MANDATORY: Log and Learn** - After executing updates, you MUST:
 
    a) **Append to history.jsonl** - For EACH processed item:
    ```bash
