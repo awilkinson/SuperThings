@@ -9,7 +9,7 @@ import { ThingsValidationError } from '../../src/lib/errors.js';
 describe('validateAppleScriptArg', () => {
   it('should accept valid alphanumeric strings', () => {
     const valid = ['test', 'Test123', 'my-project', 'my_task', 'task.name', 'user@email.com'];
-    
+
     valid.forEach(arg => {
       expect(() => validateAppleScriptArg(arg, 'field')).not.toThrow();
       expect(validateAppleScriptArg(arg, 'field')).toBe(arg);
@@ -21,26 +21,32 @@ describe('validateAppleScriptArg', () => {
     expect(result).toBe('Project-2023_v1.0@final');
   });
 
-  it('should throw for empty strings', () => {
-    expect(() => validateAppleScriptArg('', 'field'))
-      .toThrow(new ThingsValidationError('field cannot be empty'));
+  it('should accept empty strings (for optional arguments)', () => {
+    expect(validateAppleScriptArg('', 'field')).toBe('');
   });
 
   it('should throw for strings that are too long', () => {
-    const longString = 'a'.repeat(256);
+    const longString = 'a'.repeat(10001);
     expect(() => validateAppleScriptArg(longString, 'field'))
-      .toThrow(new ThingsValidationError('field is too long (max 255 characters)'));
+      .toThrow(ThingsValidationError);
   });
 
-  it('should throw for strings with invalid characters', () => {
-    const invalid = ['test;', 'test|pipe', 'test<>', 'test$var', 'test&param', 'test#hash'];
-    
-    invalid.forEach(arg => {
+  it('should throw for strings with dangerous characters (shell injection)', () => {
+    const dangerous = ['test`cmd`', 'test$(whoami)', 'test\x00null'];
+
+    dangerous.forEach(arg => {
       expect(() => validateAppleScriptArg(arg, 'testField'))
-        .toThrow(new ThingsValidationError(
-          'testField contains invalid characters. Only letters, numbers, spaces, hyphens, dots, and @ are allowed.',
-          'testField'
-        ));
+        .toThrow(ThingsValidationError);
+    });
+  });
+
+  it('should allow normal punctuation that is not dangerous', () => {
+    // These were previously blocked but are now allowed
+    const allowed = ['test;', 'test|pipe', 'test<>', 'test&param', 'test#hash'];
+
+    allowed.forEach(arg => {
+      expect(() => validateAppleScriptArg(arg, 'field')).not.toThrow();
+      expect(validateAppleScriptArg(arg, 'field')).toBe(arg);
     });
   });
 });
@@ -52,7 +58,7 @@ describe('validateThingsId', () => {
       'xYz789aBc123dEf456gHi',
       'A1B2C3D4E5F67890ABCD'
     ];
-    
+
     validIds.forEach(id => {
       expect(() => validateThingsId(id)).not.toThrow();
       expect(validateThingsId(id)).toBe(id);
@@ -70,7 +76,7 @@ describe('validateThingsId', () => {
       '35j1Briqg6XBPzPtBDwZJK!', // Contains special character
       ''
     ];
-    
+
     invalidIds.forEach(id => {
       expect(() => validateThingsId(id))
         .toThrow(new ThingsValidationError(

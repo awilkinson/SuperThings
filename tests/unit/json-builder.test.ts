@@ -1,11 +1,11 @@
 import { describe, it, expect, jest, beforeEach } from '@jest/globals';
 
-// Create the mock
-const mockExecuteThingsJSON = jest.fn<() => Promise<void>>();
+// Create the mock for AppleScript execution
+const mockExecuteAppleScriptFile = jest.fn<(scriptName: string, args?: string[]) => Promise<string>>();
 
-// Mock the urlscheme module
-jest.unstable_mockModule('../../src/lib/urlscheme.js', () => ({
-  executeThingsJSON: mockExecuteThingsJSON
+// Mock the applescript module (this is what json-builder actually uses)
+jest.unstable_mockModule('../../src/lib/applescript.js', () => ({
+  executeAppleScriptFile: mockExecuteAppleScriptFile
 }));
 
 // Dynamic imports after mocking
@@ -17,20 +17,30 @@ describe('ThingsJSONBuilder', () => {
   beforeEach(() => {
     builder = new ThingsJSONBuilder();
     jest.clearAllMocks();
+    // Default mock return value (project ID for create-project)
+    mockExecuteAppleScriptFile.mockResolvedValue('mock-project-id');
   });
 
   describe('createTodo', () => {
     it('should create a simple to-do', async () => {
       const params = { title: 'Test Todo' };
-      
-      await builder.createTodo(params);
-      
-      expect(mockExecuteThingsJSON).toHaveBeenCalledWith([
-        {
-          type: 'to-do',
-          attributes: { title: 'Test Todo' }
-        }
+
+      const result = await builder.createTodo(params);
+
+      expect(mockExecuteAppleScriptFile).toHaveBeenCalledWith('create-todo', [
+        'Test Todo', // title
+        '',          // notes
+        '',          // when
+        '',          // deadline
+        '',          // tags
+        '',          // list
+        '',          // listId
+        '',          // heading
+        'false',     // completed
+        'false',     // canceled
+        ''           // checklistItems
       ]);
+      expect(result).toBe('Created to-do: "Test Todo"');
     });
 
     it('should create a to-do with all parameters', async () => {
@@ -44,87 +54,44 @@ describe('ThingsJSONBuilder', () => {
         list: 'inbox',
         completed: false
       };
-      
-      await builder.createTodo(params);
-      
-      expect(mockExecuteThingsJSON).toHaveBeenCalledWith([
-        {
-          type: 'to-do',
-          attributes: {
-            title: 'Complex Todo',
-            notes: 'Some notes',
-            when: 'today',
-            deadline: '2025-01-15',
-            tags: ['work', 'urgent'],
-            'checklist-items': [
-              {
-                type: 'checklist-item',
-                attributes: {
-                  title: 'Step 1',
-                  completed: false
-                }
-              },
-              {
-                type: 'checklist-item',
-                attributes: {
-                  title: 'Step 2',
-                  completed: false
-                }
-              }
-            ],
-            list: 'inbox',
-            completed: false
-          }
-        }
+
+      const result = await builder.createTodo(params);
+
+      expect(mockExecuteAppleScriptFile).toHaveBeenCalledWith('create-todo', [
+        'Complex Todo',     // title
+        'Some notes',       // notes
+        'today',            // when
+        '2025-01-15',       // deadline
+        'work,urgent',      // tags (comma-separated)
+        'inbox',            // list
+        '',                 // listId
+        '',                 // heading
+        'false',            // completed
+        'false',            // canceled
+        'Step 1\nStep 2'    // checklistItems (newline-separated)
       ]);
+      expect(result).toBe('Created to-do: "Complex Todo"');
     });
   });
 
   describe('createProject', () => {
     it('should create a simple project', async () => {
       const params = { title: 'Test Project' };
-      
-      const result = await builder.createProject(params);
-      
-      expect(mockExecuteThingsJSON).toHaveBeenCalledWith([
-        {
-          type: 'project',
-          attributes: { title: 'Test Project' }
-        }
-      ]);
-      expect(result).toBe('✅ Project created successfully: "Test Project"');
-    });
 
-    it('should create a project with items (headings)', async () => {
-      const params = {
-        title: 'Project with Headings',
-        items: [
-          { type: 'heading' as const, title: 'Planning', archived: false },
-          { type: 'heading' as const, title: 'Execution', archived: false }
-        ]
-      };
-      
       const result = await builder.createProject(params);
-      
-      expect(mockExecuteThingsJSON).toHaveBeenCalledWith([
-        {
-          type: 'project',
-          attributes: {
-            title: 'Project with Headings',
-            items: [
-              {
-                type: 'heading',
-                attributes: { title: 'Planning', archived: false }
-              },
-              {
-                type: 'heading',
-                attributes: { title: 'Execution', archived: false }
-              }
-            ]
-          }
-        }
+
+      expect(mockExecuteAppleScriptFile).toHaveBeenCalledWith('create-project', [
+        'Test Project', // title
+        '',             // notes
+        '',             // when
+        '',             // deadline
+        '',             // tags
+        '',             // areaId
+        '',             // area
+        'false',        // completed
+        'false'         // canceled
       ]);
-      expect(result).toBe('✅ Project created successfully: "Project with Headings" (2 items)');
+      expect(result).toBe('Created project: "Test Project"');
     });
 
     it('should create a project with items (todos)', async () => {
@@ -136,35 +103,30 @@ describe('ThingsJSONBuilder', () => {
           { type: 'todo' as const, title: 'Task 3' }
         ]
       };
-      
+
       const result = await builder.createProject(params);
-      
-      expect(mockExecuteThingsJSON).toHaveBeenCalledWith([
-        {
-          type: 'project',
-          attributes: {
-            title: 'Project with Todos',
-            items: [
-              {
-                type: 'to-do',
-                attributes: { title: 'Task 1' }
-              },
-              {
-                type: 'to-do',
-                attributes: { title: 'Task 2' }
-              },
-              {
-                type: 'to-do',
-                attributes: { title: 'Task 3' }
-              }
-            ]
-          }
-        }
+
+      // First call creates the project
+      expect(mockExecuteAppleScriptFile).toHaveBeenNthCalledWith(1, 'create-project', [
+        'Project with Todos',
+        '', '', '', '', '', '', 'false', 'false'
       ]);
-      expect(result).toBe('✅ Project created successfully: "Project with Todos" (3 items)');
+
+      // Then 3 calls to create todos
+      expect(mockExecuteAppleScriptFile).toHaveBeenNthCalledWith(2, 'create-todo', [
+        'Task 1', '', '', '', '', '', 'mock-project-id', '', 'false', 'false', ''
+      ]);
+      expect(mockExecuteAppleScriptFile).toHaveBeenNthCalledWith(3, 'create-todo', [
+        'Task 2', '', '', '', '', '', 'mock-project-id', '', 'false', 'false', ''
+      ]);
+      expect(mockExecuteAppleScriptFile).toHaveBeenNthCalledWith(4, 'create-todo', [
+        'Task 3', '', '', '', '', '', 'mock-project-id', '', 'false', 'false', ''
+      ]);
+
+      expect(result).toBe('Created project: "Project with Todos" with 3 todo(s)');
     });
 
-    it('should create a project with mixed items (headings and todos)', async () => {
+    it('should create a project with mixed items (headings are skipped)', async () => {
       const params = {
         title: 'Complex Project',
         items: [
@@ -175,54 +137,53 @@ describe('ThingsJSONBuilder', () => {
         area: 'Work',
         tags: ['important', 'q1']
       };
-      
+
       const result = await builder.createProject(params);
-      
-      expect(mockExecuteThingsJSON).toHaveBeenCalledWith([
-        {
-          type: 'project',
-          attributes: {
-            title: 'Complex Project',
-            area: 'Work',
-            tags: ['important', 'q1'],
-            items: [
-              {
-                type: 'heading',
-                attributes: { title: 'Phase 1', archived: false }
-              },
-              {
-                type: 'to-do',
-                attributes: { title: 'Task A' }
-              },
-              {
-                type: 'to-do',
-                attributes: { title: 'Task B' }
-              }
-            ]
-          }
-        }
+
+      // First call creates the project
+      expect(mockExecuteAppleScriptFile).toHaveBeenNthCalledWith(1, 'create-project', [
+        'Complex Project',
+        '',                 // notes
+        '',                 // when
+        '',                 // deadline
+        'important,q1',     // tags
+        '',                 // areaId
+        'Work',             // area
+        'false',
+        'false'
       ]);
-      expect(result).toBe('✅ Project created successfully: "Complex Project" (3 items)');
+
+      // Only 2 calls for todos (heading is skipped)
+      expect(mockExecuteAppleScriptFile).toHaveBeenCalledTimes(3); // 1 project + 2 todos
+
+      expect(result).toBe('Created project: "Complex Project" with 2 todo(s)');
     });
   });
 
   describe('parameter conversion', () => {
-    it('should omit undefined parameters', async () => {
+    it('should omit undefined parameters by using empty strings', async () => {
       const params = {
         title: 'Test',
         notes: undefined,
         when: undefined,
         tags: []
       };
-      
+
       await builder.createTodo(params);
-      
-      const call = mockExecuteThingsJSON.mock.calls[0]?.[0];
-      const attributes = call?.[0]?.attributes as Record<string, unknown>;
-      
-      expect(attributes.notes).toBeUndefined();
-      expect(attributes.when).toBeUndefined();
-      expect(attributes.tags).toBeUndefined();
+
+      expect(mockExecuteAppleScriptFile).toHaveBeenCalledWith('create-todo', [
+        'Test',
+        '',       // notes -> empty string
+        '',       // when -> empty string
+        '',       // deadline
+        '',       // tags (empty array -> empty string)
+        '',       // list
+        '',       // listId
+        '',       // heading
+        'false',
+        'false',
+        ''
+      ]);
     });
 
     it('should convert tags array to comma-separated string', async () => {
@@ -230,59 +191,69 @@ describe('ThingsJSONBuilder', () => {
         title: 'Test',
         tags: ['tag1', 'tag2', 'tag3']
       };
-      
+
       await builder.createProject(params);
-      
-      const call = mockExecuteThingsJSON.mock.calls[0]?.[0];
-      const attributes = call?.[0]?.attributes as Record<string, unknown>;
-      
-      expect(attributes.tags).toEqual(['tag1', 'tag2', 'tag3']);
+
+      expect(mockExecuteAppleScriptFile).toHaveBeenCalledWith('create-project', [
+        'Test',
+        '',
+        '',
+        '',
+        'tag1,tag2,tag3', // comma-separated tags
+        '',
+        '',
+        'false',
+        'false'
+      ]);
     });
   });
 
   describe('updateTodo', () => {
-    it('should update a to-do with operation field', async () => {
+    it('should update a to-do with title and notes', async () => {
       const params = {
         id: 'todo-123',
         title: 'Updated Todo',
         notes: 'Updated notes'
       };
-      
+
       const result = await builder.updateTodo(params);
-      
-      expect(mockExecuteThingsJSON).toHaveBeenCalledWith([
-        {
-          type: 'to-do',
-          operation: 'update',
-          id: 'todo-123',
-          attributes: {
-            title: 'Updated Todo',
-            notes: 'Updated notes'
-          }
-        }
+
+      expect(mockExecuteAppleScriptFile).toHaveBeenCalledWith('update-todo', [
+        'todo-123',       // id
+        'Updated Todo',   // title
+        'Updated notes',  // notes
+        '',               // when
+        '',               // deadline
+        '',               // tags
+        '',               // list
+        '',               // listId
+        '',               // completed (not set, empty)
+        ''                // canceled (not set, empty)
       ]);
-      expect(result).toBe('✅ To-do updated successfully: "Updated Todo"');
+      expect(result).toBe('Updated to-do: "Updated Todo"');
     });
 
-    it('should update a to-do without title', async () => {
+    it('should update a to-do with completed status', async () => {
       const params = {
         id: 'todo-123',
         completed: true
       };
-      
+
       const result = await builder.updateTodo(params);
-      
-      expect(mockExecuteThingsJSON).toHaveBeenCalledWith([
-        {
-          type: 'to-do',
-          operation: 'update',
-          id: 'todo-123',
-          attributes: {
-            completed: true
-          }
-        }
+
+      expect(mockExecuteAppleScriptFile).toHaveBeenCalledWith('update-todo', [
+        'todo-123',
+        '',
+        '',
+        '',
+        '',
+        '',
+        '',
+        '',
+        'true',   // completed
+        ''        // canceled
       ]);
-      expect(result).toBe('✅ To-do updated successfully: "Updated todo"');
+      expect(result).toBe('Updated to-do: "todo-123"');
     });
   });
 
@@ -293,26 +264,27 @@ describe('ThingsJSONBuilder', () => {
         title: 'Updated Project',
         area: 'New Area'
       };
-      
+
       const result = await builder.updateProject(params);
-      
-      expect(mockExecuteThingsJSON).toHaveBeenCalledWith([
-        {
-          type: 'project',
-          operation: 'update',
-          id: 'project-456',
-          attributes: {
-            title: 'Updated Project',
-            area: 'New Area'
-          }
-        }
+
+      expect(mockExecuteAppleScriptFile).toHaveBeenCalledWith('update-project', [
+        'project-456',     // id
+        'Updated Project', // title
+        '',                // notes
+        '',                // when
+        '',                // deadline
+        '',                // tags
+        '',                // areaId
+        'New Area',        // area
+        '',                // completed
+        ''                 // canceled
       ]);
-      expect(result).toBe('✅ Project updated successfully: "Updated Project"');
+      expect(result).toBe('Updated project: "Updated Project"');
     });
   });
 
   describe('addItemsToProject', () => {
-    it('should add items to an existing project', async () => {
+    it('should add todos to an existing project (headings skipped)', async () => {
       const params = {
         id: 'project-789',
         items: [
@@ -320,23 +292,28 @@ describe('ThingsJSONBuilder', () => {
           { type: 'todo' as const, title: 'New Task' }
         ]
       };
-      
+
       const result = await builder.addItemsToProject(params);
-      
-      // Should create todo individually with list-id (headings are skipped)
-      expect(mockExecuteThingsJSON).toHaveBeenCalledWith([
-        {
-          type: 'to-do',
-          attributes: {
-            title: 'New Task',
-            'list-id': 'project-789'
-          }
-        }
+
+      // Only one call for the todo (heading is skipped)
+      expect(mockExecuteAppleScriptFile).toHaveBeenCalledTimes(1);
+      expect(mockExecuteAppleScriptFile).toHaveBeenCalledWith('create-todo', [
+        'New Task',
+        '',
+        '',
+        '',
+        '',
+        '',
+        'project-789',  // list_id is set to project id
+        '',
+        'false',
+        'false',
+        ''
       ]);
-      expect(result).toBe('✅ Added 1 todo(s) to project\n⚠️ Skipped 1 heading(s) - headings cannot be added to existing projects');
+      expect(result).toBe('Added 1 todo(s) to project\nSkipped 1 heading(s) - headings cannot be added via AppleScript');
     });
 
-    it('should add complex items with proper flat structure', async () => {
+    it('should add multiple todos with proper attributes', async () => {
       const params = {
         id: 'aBc123dEf456gHi789JkL',
         items: [
@@ -347,50 +324,60 @@ describe('ThingsJSONBuilder', () => {
           { type: 'todo' as const, title: 'Museum visit', when: 'tomorrow' as const }
         ]
       };
-      
+
       const result = await builder.addItemsToProject(params);
-      
+
       // Should be called 3 times (once for each todo, headings are skipped)
-      expect(mockExecuteThingsJSON).toHaveBeenCalledTimes(3);
-      
+      expect(mockExecuteAppleScriptFile).toHaveBeenCalledTimes(3);
+
       // First todo
-      expect(mockExecuteThingsJSON).toHaveBeenNthCalledWith(1, [
-        {
-          type: 'to-do',
-          attributes: {
-            title: 'Morning activity',
-            notes: 'Early start',
-            'list-id': 'aBc123dEf456gHi789JkL'
-          }
-        }
+      expect(mockExecuteAppleScriptFile).toHaveBeenNthCalledWith(1, 'create-todo', [
+        'Morning activity',
+        'Early start',
+        '',
+        '',
+        '',
+        '',
+        'aBc123dEf456gHi789JkL',
+        '',
+        'false',
+        'false',
+        ''
       ]);
-      
+
       // Second todo
-      expect(mockExecuteThingsJSON).toHaveBeenNthCalledWith(2, [
-        {
-          type: 'to-do',
-          attributes: {
-            title: 'Lunch at cafe',
-            'list-id': 'aBc123dEf456gHi789JkL'
-          }
-        }
+      expect(mockExecuteAppleScriptFile).toHaveBeenNthCalledWith(2, 'create-todo', [
+        'Lunch at cafe',
+        '',
+        '',
+        '',
+        '',
+        '',
+        'aBc123dEf456gHi789JkL',
+        '',
+        'false',
+        'false',
+        ''
       ]);
-      
+
       // Third todo
-      expect(mockExecuteThingsJSON).toHaveBeenNthCalledWith(3, [
-        {
-          type: 'to-do',
-          attributes: {
-            title: 'Museum visit',
-            when: 'tomorrow',
-            'list-id': 'aBc123dEf456gHi789JkL'
-          }
-        }
+      expect(mockExecuteAppleScriptFile).toHaveBeenNthCalledWith(3, 'create-todo', [
+        'Museum visit',
+        '',
+        'tomorrow',
+        '',
+        '',
+        '',
+        'aBc123dEf456gHi789JkL',
+        '',
+        'false',
+        'false',
+        ''
       ]);
-      
-      expect(result).toBe('✅ Added 3 todo(s) to project\n⚠️ Skipped 2 heading(s) - headings cannot be added to existing projects');
+
+      expect(result).toBe('Added 3 todo(s) to project\nSkipped 2 heading(s) - headings cannot be added via AppleScript');
     });
-    
+
     it('should handle only headings', async () => {
       const params = {
         id: 'project-789',
@@ -399,16 +386,18 @@ describe('ThingsJSONBuilder', () => {
           { type: 'heading' as const, title: 'Phase 2' }
         ]
       };
-      
+
       const result = await builder.addItemsToProject(params);
-      
-      expect(mockExecuteThingsJSON).not.toHaveBeenCalled();
-      expect(result).toBe('⚠️ Skipped 2 heading(s) - headings cannot be added to existing projects');
+
+      expect(mockExecuteAppleScriptFile).not.toHaveBeenCalled();
+      expect(result).toBe('Skipped 2 heading(s) - headings cannot be added via AppleScript');
     });
-    
+
     it('should handle errors gracefully', async () => {
-      mockExecuteThingsJSON.mockRejectedValueOnce(new Error('API Error'));
-      
+      mockExecuteAppleScriptFile
+        .mockRejectedValueOnce(new Error('API Error'))
+        .mockResolvedValueOnce('');
+
       const params = {
         id: 'project-789',
         items: [
@@ -416,11 +405,11 @@ describe('ThingsJSONBuilder', () => {
           { type: 'todo' as const, title: 'Task 2' }
         ]
       };
-      
+
       const result = await builder.addItemsToProject(params);
-      
-      expect(mockExecuteThingsJSON).toHaveBeenCalledTimes(2);
-      expect(result).toBe('✅ Added 1 todo(s) to project\n❌ Failed to add: "Task 1"');
+
+      expect(mockExecuteAppleScriptFile).toHaveBeenCalledTimes(2);
+      expect(result).toBe('Added 1 todo(s) to project\nFailed to add: "Task 1"');
     });
   });
 });

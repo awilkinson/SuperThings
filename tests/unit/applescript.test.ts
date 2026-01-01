@@ -20,19 +20,31 @@ describe('AppleScript argument validation', () => {
     });
   });
 
-  it('should reject dangerous arguments', () => {
+  it('should reject dangerous arguments (shell injection vectors)', () => {
+    // Only backticks, $(), and null bytes are blocked
     const dangerousArgs = [
-      'text; rm -rf /',
-      'text && echo bad',
-      'text | cat /etc/passwd',
       'text`whoami`',
       'text$(date)',
-      'text\'; DROP TABLE--'
+      'text\x00null'
     ];
-    
+
     dangerousArgs.forEach(arg => {
       expect(() => validateAppleScriptArg(arg, 'test'))
         .toThrow(ThingsValidationError);
+    });
+  });
+
+  it('should allow normal shell-like characters that are not injection vectors', () => {
+    // These look dangerous but are handled safely by quote escaping
+    const allowedArgs = [
+      'text; rm -rf /',
+      'text && echo bad',
+      'text | cat /etc/passwd',
+      "text'; DROP TABLE--"
+    ];
+
+    allowedArgs.forEach(arg => {
+      expect(() => validateAppleScriptArg(arg, 'test')).not.toThrow();
     });
   });
 });

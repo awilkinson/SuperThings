@@ -2,6 +2,7 @@ import { executeAppleScriptFile } from '../lib/applescript.js';
 import { parseTodoList, parseProjectList, parseAreaList, parseTagList, parseTodoDetails } from '../lib/parser.js';
 import { GetProjectSchema, GetAreaSchema, GetListSchema, GetListByNameSchema, GetTodoDetailsSchema } from '../types/mcp.js';
 import { AbstractToolHandler, ToolDefinition } from '../lib/abstract-tool-handler.js';
+import { cache, CACHE_KEYS, DEFAULT_CACHE_TTL } from '../lib/cache.js';
 import { z } from 'zod';
 
 type GetParams = z.infer<typeof GetListSchema> | z.infer<typeof GetProjectSchema> | z.infer<typeof GetAreaSchema> | z.infer<typeof GetListByNameSchema> | z.infer<typeof GetTodoDetailsSchema>;
@@ -106,9 +107,30 @@ class GetToolHandler extends AbstractToolHandler<GetParams> {
     'trash': 'get-trash'
   };
 
+  // Map tool names to cache keys for cacheable operations
+  private cacheKeyMap: Record<string, string> = {
+    'things_get_inbox': CACHE_KEYS.INBOX,
+    'things_get_today': CACHE_KEYS.TODAY,
+    'things_get_upcoming': CACHE_KEYS.UPCOMING,
+    'things_get_anytime': CACHE_KEYS.ANYTIME,
+    'things_get_someday': CACHE_KEYS.SOMEDAY,
+    'things_get_projects': CACHE_KEYS.PROJECTS,
+    'things_get_areas': CACHE_KEYS.AREAS,
+    'things_get_tags': CACHE_KEYS.TAGS,
+  };
+
   async execute(toolName: string, params: GetParams): Promise<string> {
+    // Check cache for list-based queries (no arguments = cacheable)
+    const cacheKey = this.cacheKeyMap[toolName];
+    if (cacheKey && !(params as any).max_results) {
+      const cached = cache.get<string>(cacheKey);
+      if (cached) {
+        return cached;
+      }
+    }
+
     let scriptName: string;
-    
+
     // Handle the get_list tool separately
     if (toolName === 'things_get_list') {
       const listParams = params as z.infer<typeof GetListByNameSchema>;
@@ -122,10 +144,10 @@ class GetToolHandler extends AbstractToolHandler<GetParams> {
         throw new Error(`Unknown tool: ${toolName}`);
       }
     }
-    
+
     let scriptArgs: string[] = [];
     const options = { maxResults: (params as any).max_results };
-    
+
     // Handle specific tools that need arguments
     if (toolName === 'things_get_project') {
       const projectParams = params as z.infer<typeof GetProjectSchema>;
@@ -139,17 +161,17 @@ class GetToolHandler extends AbstractToolHandler<GetParams> {
       // Don't pass maxResults for todo details since it's a single item
       delete options.maxResults;
     }
-    
+
     const output = await executeAppleScriptFile(scriptName, scriptArgs, options);
-    
+
     // Return empty array for empty output
     if (!output.trim()) {
-      const emptyResult = toolName.includes('project') || toolName.includes('area') 
+      const emptyResult = toolName.includes('project') || toolName.includes('area')
         ? { todos: [] }
         : { [this.getResultKey(toolName)]: [] };
       return JSON.stringify(emptyResult, null, 2);
     }
-    
+
     // Parse based on tool type
     let result;
     switch (toolName) {
@@ -168,8 +190,15 @@ class GetToolHandler extends AbstractToolHandler<GetParams> {
       default:
         result = { todos: parseTodoList(output) };
     }
-    
-    return JSON.stringify(result, null, 2);
+
+    const jsonResult = JSON.stringify(result, null, 2);
+
+    // Cache the result for list-based queries
+    if (cacheKey && !(params as any).max_results) {
+      cache.set(cacheKey, jsonResult, DEFAULT_CACHE_TTL);
+    }
+
+    return jsonResult;
   }
 
   private getResultKey(toolName: string): string {

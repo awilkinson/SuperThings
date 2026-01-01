@@ -38,34 +38,11 @@ Runs on Haiku, but **auto-escalates to Sonnet** when hitting speedbumps:
 
 **How to escalate:** Use Task tool with `model: sonnet` for complex items.
 
-## Context Efficiency - Caching
-
-**ALWAYS cache task data to minimize context usage:**
-
-### First Fetch:
-1. Fetch inbox using `mcp__things-mcp__things_get_inbox`
-2. Write to `~/.claude/cache/things-inbox.json` with timestamp
-3. Present summary count only
-
-### Subsequent Operations:
-- Read from cache instead of re-fetching
-- Only re-fetch if user says "refresh" or cache > 1 hour old
-
-### Cache Format:
-```json
-{
-  "fetched_at": "ISO-timestamp",
-  "tasks": [{"id": "...", "title": "...", "notes": "..."}]
-}
-```
-
 ## Workflow
 
-1. **Check cache first** - Read `~/.claude/cache/things-inbox.json` if exists and recent
+1. **Fetch inbox** - Call `mcp__SuperThings__things_get_inbox` directly (server handles caching internally with 1-minute TTL)
 
-2. **Fetch inbox** (only if no cache) using `mcp__things-mcp__things_get_inbox`, then write to cache
-
-3. **Process each task**:
+2. **Process each task**:
    - **URL tasks**: Use Firecrawl/WebFetch to resolve URLs and create descriptive titles
      - YouTube: "Watch: [Video Title] - [Creator]"
      - GitHub: "Review: [Repo Name] - [Description]"
@@ -75,7 +52,7 @@ Runs on Haiku, but **auto-escalates to Sonnet** when hitting speedbumps:
    - **Clear tasks**: Keep title as-is, just categorize
    - **Unclear/cryptic tasks**: Leave title unchanged (don't guess)
 
-4. **Assign projects** using these rules:
+3. **Assign projects** using these rules:
 
    **Default: Computer** - Almost everything goes here if it can be done on computer OR delegated.
 
@@ -110,7 +87,7 @@ Runs on Haiku, but **auto-escalates to Sonnet** when hitting speedbumps:
    - Research → Always Computer (never Deep Work)
    - Build/Make software → Deep Work (assume multi-hour unless obviously simple)
 
-5. **Present results** using grouped card format showing before/after:
+4. **Present results** using grouped card format showing before/after:
    ```
    Inbox (44) | C=Computer D=Deep O=Out P=Call
 
@@ -139,11 +116,9 @@ Runs on Haiku, but **auto-escalates to Sonnet** when hitting speedbumps:
    - Project codes: C=Computer, D=Deep, O=Out&About, P=Call, K=Kids
    - Keep divider line ~60 chars wide
 
-6. **Wait for user approval**: User replies with numbers (e.g., "1,2,5-10" or "all")
+5. **Wait for user approval**: User replies with numbers (e.g., "1,2,5-10" or "all")
 
-7. **Execute updates** using `mcp__things-mcp__things_update_todo` for approved items
-
-8. **Update cache** after changes are made
+6. **Execute updates** using `mcp__SuperThings__things_update_todo` for approved items
 
 ## URL Resolution (Firecrawl)
 
@@ -206,10 +181,9 @@ Read current patterns.json, apply updates, write back.
 
 Now execute the triage workflow:
 1. **Load patterns first** - Read `~/Projects/SuperThings/data/patterns.json`
-2. Check for cache file
-3. Fetch only if needed
-4. Apply learned patterns when generating suggestions
-5. Show `[learned: Nx]` for pattern-based suggestions
-6. After user confirms, log to history.jsonl and update patterns.json
-7. Keep responses concise to save context
-8. Launch parallel haiku agents for URL resolution
+2. **Fetch inbox** - Call `mcp__SuperThings__things_get_inbox` (server handles caching)
+3. Apply learned patterns when generating suggestions
+4. Show `[learned: Nx]` for pattern-based suggestions
+5. After user confirms, log to history.jsonl and update patterns.json
+6. Keep responses concise to save context
+7. Launch parallel haiku agents for URL resolution
