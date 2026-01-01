@@ -21,7 +21,7 @@ class SearchToolHandler extends AbstractToolHandler<SearchParams> {
     {
       name: 'things_search',
       description: 'Search for to-dos across all lists by keyword, tag, or URL presence. Perfect for finding specific tasks or filtering URL-only items during triage.',
-      schema: SearchTodosSchema as any
+      schema: SearchTodosSchema
     }
   ];
 

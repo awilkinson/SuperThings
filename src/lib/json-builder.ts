@@ -17,37 +17,77 @@ export class ThingsJSONBuilder {
 
   /**
    * Create a project using AppleScript
+   * Returns structured JSON when items are included
    */
   async createProject(params: AddProjectParams): Promise<string> {
     const args = this.buildProjectArgs(params);
     const projectId = await executeAppleScriptFile('create-project', args);
 
-    // If there are items, create them as todos in the project
-    if (params.items && params.items.length > 0) {
-      let itemCount = 0;
-      for (const item of params.items) {
-        if (item.type === 'todo') {
-          const todoArgs = this.buildTodoArgs({
-            title: item.title,
-            notes: item.notes,
-            when: item.when,
-            deadline: item.deadline,
-            tags: item.tags,
-            list_id: projectId,
-            completed: item.completed,
-            canceled: item.canceled,
-            checklist_items: item.checklist?.map(c => c.title)
-          });
-          await executeAppleScriptFile('create-todo', todoArgs);
-          itemCount++;
+    // If no items, return simple success
+    if (!params.items || params.items.length === 0) {
+      return JSON.stringify({
+        success: true,
+        project: {
+          id: projectId,
+          title: params.title
         }
-        // Note: Headings can only be created during project creation via URL scheme
-        // AppleScript doesn't support adding headings, so we skip them with a note
-      }
-      return `Created project: "${params.title}" with ${itemCount} todo(s)`;
+      }, null, 2);
     }
 
-    return `Created project: "${params.title}"`;
+    // Process items with detailed tracking
+    const results = {
+      success: [] as { title: string }[],
+      failed: [] as { title: string; reason: string }[],
+      skipped: [] as { title: string; reason: string }[]
+    };
+
+    for (const item of params.items) {
+      if (item.type === 'heading') {
+        results.skipped.push({
+          title: item.title,
+          reason: 'Headings cannot be added via AppleScript'
+        });
+        continue;
+      }
+
+      try {
+        const todoArgs = this.buildTodoArgs({
+          title: item.title,
+          notes: item.notes,
+          when: item.when,
+          deadline: item.deadline,
+          tags: item.tags,
+          list_id: projectId,
+          completed: item.completed,
+          canceled: item.canceled,
+          checklist_items: item.checklist?.map(c => c.title)
+        });
+        await executeAppleScriptFile('create-todo', todoArgs);
+        results.success.push({ title: item.title });
+      } catch (error) {
+        results.failed.push({
+          title: item.title,
+          reason: error instanceof Error ? error.message : 'Unknown error'
+        });
+      }
+    }
+
+    return JSON.stringify({
+      success: true,
+      project: {
+        id: projectId,
+        title: params.title
+      },
+      items: {
+        total: params.items.length,
+        succeeded: results.success.length,
+        failed: results.failed.length,
+        skipped: results.skipped.length
+      },
+      created: results.success.map(s => s.title),
+      failed: results.failed,
+      skipped: results.skipped
+    }, null, 2);
   }
 
   /**
@@ -70,17 +110,22 @@ export class ThingsJSONBuilder {
 
   /**
    * Add items to an existing project
+   * Returns structured JSON with detailed success/failure information
    */
   async addItemsToProject(params: AddItemsToProjectParams): Promise<string> {
     const results = {
-      todos: 0,
-      headings: 0,
-      errors: [] as string[]
+      success: [] as { title: string; type: string }[],
+      failed: [] as { title: string; type: string; reason: string }[],
+      skipped: [] as { title: string; type: string; reason: string }[]
     };
 
     for (const item of params.items) {
       if (item.type === 'heading') {
-        results.headings++;
+        results.skipped.push({
+          title: item.title,
+          type: 'heading',
+          reason: 'Headings cannot be added via AppleScript (only during project creation)'
+        });
         continue;
       }
 
@@ -97,33 +142,34 @@ export class ThingsJSONBuilder {
           checklist_items: item.checklist?.map(c => c.title)
         });
         await executeAppleScriptFile('create-todo', todoArgs);
-        results.todos++;
-      } catch {
-        results.errors.push(`"${item.title}"`);
+        results.success.push({
+          title: item.title,
+          type: 'todo'
+        });
+      } catch (error) {
+        results.failed.push({
+          title: item.title,
+          type: 'todo',
+          reason: error instanceof Error ? error.message : 'Unknown error'
+        });
       }
     }
 
-    let message = '';
+    // Build structured response
+    const response = {
+      projectId: params.id,
+      summary: {
+        total: params.items.length,
+        succeeded: results.success.length,
+        failed: results.failed.length,
+        skipped: results.skipped.length
+      },
+      success: results.success.map(s => s.title),
+      failed: results.failed,
+      skipped: results.skipped
+    };
 
-    if (results.todos > 0) {
-      message = `Added ${results.todos} todo(s) to project`;
-    }
-
-    if (results.headings > 0) {
-      if (message) message += '\n';
-      message += `Skipped ${results.headings} heading(s) - headings cannot be added via AppleScript`;
-    }
-
-    if (results.errors.length > 0) {
-      if (message) message += '\n';
-      message += `Failed to add: ${results.errors.join(', ')}`;
-    }
-
-    if (!message) {
-      message = 'No items were processed';
-    }
-
-    return message;
+    return JSON.stringify(response, null, 2);
   }
 
   /**

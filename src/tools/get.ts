@@ -7,6 +7,11 @@ import { z } from 'zod';
 
 type GetParams = z.infer<typeof GetListSchema> | z.infer<typeof GetProjectSchema> | z.infer<typeof GetAreaSchema> | z.infer<typeof GetListByNameSchema> | z.infer<typeof GetTodoDetailsSchema>;
 
+// Helper to safely access max_results from params (present on most schemas)
+function getMaxResults(params: GetParams): number | undefined {
+  return 'max_results' in params ? params.max_results : undefined;
+}
+
 class GetToolHandler extends AbstractToolHandler<GetParams> {
   protected definitions: ToolDefinition<GetParams>[] = [
     {
@@ -122,7 +127,8 @@ class GetToolHandler extends AbstractToolHandler<GetParams> {
   async execute(toolName: string, params: GetParams): Promise<string> {
     // Check cache for list-based queries (no arguments = cacheable)
     const cacheKey = this.cacheKeyMap[toolName];
-    if (cacheKey && !(params as any).max_results) {
+    const maxResults = getMaxResults(params);
+    if (cacheKey && !maxResults) {
       const cached = cache.get<string>(cacheKey);
       if (cached) {
         return cached;
@@ -146,7 +152,7 @@ class GetToolHandler extends AbstractToolHandler<GetParams> {
     }
 
     let scriptArgs: string[] = [];
-    const options = { maxResults: (params as any).max_results };
+    const options = { maxResults };
 
     // Handle specific tools that need arguments
     if (toolName === 'things_get_project') {
@@ -194,7 +200,7 @@ class GetToolHandler extends AbstractToolHandler<GetParams> {
     const jsonResult = JSON.stringify(result, null, 2);
 
     // Cache the result for list-based queries
-    if (cacheKey && !(params as any).max_results) {
+    if (cacheKey && !maxResults) {
       cache.set(cacheKey, jsonResult, DEFAULT_CACHE_TTL);
     }
 

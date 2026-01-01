@@ -96,6 +96,31 @@ For each task type:
 
 ### Step 5: Display Results (Rich TLDR Format)
 
+**Time estimates** (show before research):
+```
+Research tasks found: [N]
+
+Estimated time breakdown:
+├─ URL tasks (5): ~10 min (fast scrapes)
+├─ Research tasks (3): ~25 min total
+│   ├─ "Research competitor pricing" (~15 min)
+│   ├─ "Find best practices for X" (~10 min)
+├─ Email tasks (2): ~5 min
+└─ Total: ~40 min
+
+Proceed with research? [Y/n]
+```
+
+**Time estimation rules:**
+- URL tasks: ~2 min each (fast Firecrawl scrape)
+- Research tasks: ~5-20 min each depending on complexity
+  - Simple lookup: ~5 min ("What is X", "Find X contact")
+  - Analysis: ~10 min ("Compare X vs Y", "Find best X")
+  - Deep research: ~15-20 min ("Comprehensive analysis of X")
+- Email tasks: ~2-3 min each (draft generation)
+- Browser tasks: ~5-10 min each (navigation, interaction)
+
+**After research:**
 ```
 Research Complete: [N] tasks processed
 

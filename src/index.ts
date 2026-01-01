@@ -8,6 +8,10 @@ import { getToolHandler } from './tools/get.js';
 import { showToolHandler } from './tools/show.js';
 import { updateJSONToolHandler } from './tools/update-json.js';
 import { searchToolHandler } from './tools/search.js';
+import { statusToolHandler } from './tools/status.js';
+import { deleteToolHandler } from './tools/delete.js';
+import { statsToolHandler } from './tools/stats.js';
+import { bulkToolHandler } from './tools/bulk.js';
 import { testThingsAvailable } from './lib/applescript.js';
 import { toolRegistry } from './lib/tool-registry.js';
 
@@ -17,6 +21,10 @@ toolRegistry.registerToolHandler(getToolHandler);
 toolRegistry.registerToolHandler(showToolHandler);
 toolRegistry.registerToolHandler(updateJSONToolHandler);
 toolRegistry.registerToolHandler(searchToolHandler);
+toolRegistry.registerToolHandler(statusToolHandler);
+toolRegistry.registerToolHandler(deleteToolHandler);
+toolRegistry.registerToolHandler(statsToolHandler);
+toolRegistry.registerToolHandler(bulkToolHandler);
 
 // Create MCP server
 const server = new Server(

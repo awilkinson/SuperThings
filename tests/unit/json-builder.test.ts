@@ -91,7 +91,10 @@ describe('ThingsJSONBuilder', () => {
         'false',        // completed
         'false'         // canceled
       ]);
-      expect(result).toBe('Created project: "Test Project"');
+      const parsed = JSON.parse(result);
+      expect(parsed.success).toBe(true);
+      expect(parsed.project.title).toBe('Test Project');
+      expect(parsed.project.id).toBe('mock-project-id');
     });
 
     it('should create a project with items (todos)', async () => {
@@ -123,7 +126,11 @@ describe('ThingsJSONBuilder', () => {
         'Task 3', '', '', '', '', '', 'mock-project-id', '', 'false', 'false', ''
       ]);
 
-      expect(result).toBe('Created project: "Project with Todos" with 3 todo(s)');
+      const parsed = JSON.parse(result);
+      expect(parsed.success).toBe(true);
+      expect(parsed.project.title).toBe('Project with Todos');
+      expect(parsed.items.succeeded).toBe(3);
+      expect(parsed.created).toEqual(['Task 1', 'Task 2', 'Task 3']);
     });
 
     it('should create a project with mixed items (headings are skipped)', async () => {
@@ -156,7 +163,12 @@ describe('ThingsJSONBuilder', () => {
       // Only 2 calls for todos (heading is skipped)
       expect(mockExecuteAppleScriptFile).toHaveBeenCalledTimes(3); // 1 project + 2 todos
 
-      expect(result).toBe('Created project: "Complex Project" with 2 todo(s)');
+      const parsed = JSON.parse(result);
+      expect(parsed.success).toBe(true);
+      expect(parsed.project.title).toBe('Complex Project');
+      expect(parsed.items.succeeded).toBe(2);
+      expect(parsed.items.skipped).toBe(1);
+      expect(parsed.skipped[0].title).toBe('Phase 1');
     });
   });
 
@@ -310,7 +322,11 @@ describe('ThingsJSONBuilder', () => {
         'false',
         ''
       ]);
-      expect(result).toBe('Added 1 todo(s) to project\nSkipped 1 heading(s) - headings cannot be added via AppleScript');
+      const parsed = JSON.parse(result);
+      expect(parsed.summary.succeeded).toBe(1);
+      expect(parsed.summary.skipped).toBe(1);
+      expect(parsed.success).toEqual(['New Task']);
+      expect(parsed.skipped[0].title).toBe('New Phase');
     });
 
     it('should add multiple todos with proper attributes', async () => {
@@ -375,7 +391,10 @@ describe('ThingsJSONBuilder', () => {
         ''
       ]);
 
-      expect(result).toBe('Added 3 todo(s) to project\nSkipped 2 heading(s) - headings cannot be added via AppleScript');
+      const parsed = JSON.parse(result);
+      expect(parsed.summary.succeeded).toBe(3);
+      expect(parsed.summary.skipped).toBe(2);
+      expect(parsed.success).toEqual(['Morning activity', 'Lunch at cafe', 'Museum visit']);
     });
 
     it('should handle only headings', async () => {
@@ -390,7 +409,12 @@ describe('ThingsJSONBuilder', () => {
       const result = await builder.addItemsToProject(params);
 
       expect(mockExecuteAppleScriptFile).not.toHaveBeenCalled();
-      expect(result).toBe('Skipped 2 heading(s) - headings cannot be added via AppleScript');
+      const parsed = JSON.parse(result);
+      expect(parsed.summary.succeeded).toBe(0);
+      expect(parsed.summary.skipped).toBe(2);
+      expect(parsed.skipped).toHaveLength(2);
+      expect(parsed.skipped[0].title).toBe('Phase 1');
+      expect(parsed.skipped[1].title).toBe('Phase 2');
     });
 
     it('should handle errors gracefully', async () => {
@@ -409,7 +433,13 @@ describe('ThingsJSONBuilder', () => {
       const result = await builder.addItemsToProject(params);
 
       expect(mockExecuteAppleScriptFile).toHaveBeenCalledTimes(2);
-      expect(result).toBe('Added 1 todo(s) to project\nFailed to add: "Task 1"');
+      const parsed = JSON.parse(result);
+      expect(parsed.summary.succeeded).toBe(1);
+      expect(parsed.summary.failed).toBe(1);
+      expect(parsed.success).toEqual(['Task 2']);
+      expect(parsed.failed).toHaveLength(1);
+      expect(parsed.failed[0].title).toBe('Task 1');
+      expect(parsed.failed[0].reason).toBe('API Error');
     });
   });
 });

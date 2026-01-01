@@ -4,7 +4,10 @@ import { AbstractToolHandler, ToolDefinition } from '../lib/abstract-tool-handle
 import { invalidateTodoCaches, invalidateProjectCaches } from '../lib/cache.js';
 import { z } from 'zod';
 
-type UpdateJSONParams = any; // Temporary type simplification
+type UpdateTodoParams = z.infer<typeof UpdateTodoJSONSchema>;
+type UpdateProjectParams = z.infer<typeof UpdateProjectJSONSchema>;
+type AddItemsParams = z.infer<typeof AddItemsToProjectSchema>;
+type UpdateJSONParams = UpdateTodoParams | UpdateProjectParams | AddItemsParams;
 
 /**
  * Unified handler for updating Things 3 items using JSON API
@@ -15,17 +18,17 @@ class UpdateJSONToolHandler extends AbstractToolHandler<UpdateJSONParams> {
     {
       name: 'things_update_todo',
       description: 'Update an existing to-do in Things using JSON API for full feature support',
-      schema: UpdateTodoJSONSchema as any
+      schema: UpdateTodoJSONSchema
     },
     {
       name: 'things_update_project',
       description: 'Update an existing project in Things using JSON API for full feature support',
-      schema: UpdateProjectJSONSchema as any
+      schema: UpdateProjectJSONSchema
     },
     {
       name: 'things_add_items_to_project',
       description: 'Add todos and headings to an existing project. Items are added as a flat array where headings act as visual separators for the todos that follow them.',
-      schema: AddItemsToProjectSchema as any
+      schema: AddItemsToProjectSchema
     }
   ];
 

@@ -138,6 +138,29 @@ export const AddItemsToProjectSchema = z.object({
   operation: z.literal('update').default('update')
 });
 
+// Complete/Cancel todo schemas
+export const CompleteTodoSchema = z.object({
+  id: ThingsIdString.describe('ID of the to-do to mark as complete'),
+});
+
+export const CancelTodoSchema = z.object({
+  id: ThingsIdString.describe('ID of the to-do to cancel'),
+});
+
+// Delete schemas - require confirmation to prevent accidental deletion
+export const DeleteTodoSchema = z.object({
+  id: ThingsIdString.describe('ID of the to-do to delete'),
+  confirm: z.literal(true).describe('Must be true to confirm deletion'),
+});
+
+export const DeleteProjectSchema = z.object({
+  id: ThingsIdString.describe('ID of the project to delete'),
+  confirm: z.literal(true).describe('Must be true to confirm deletion'),
+});
+
+// Statistics schema
+export const GetStatsSchema = z.object({});
+
 // Search schema for finding todos across lists
 export const SearchTodosSchema = z.object({
   query: z.string().optional().describe('Keyword to search for in todo titles. Use "*" or omit to match all.'),
@@ -145,4 +168,19 @@ export const SearchTodosSchema = z.object({
   tag: z.string().optional().describe('Filter by tag name'),
   has_url: z.boolean().optional().describe('Set to true to only return todos with URLs in the title'),
   max_results: z.number().max(500).optional().describe('Maximum number of results to return (default: 100, max: 500)'),
+});
+
+// Bulk update schema for batch operations
+export const BulkUpdateSchema = z.object({
+  ids: z.array(ThingsIdString).min(1, 'At least one ID required').max(100, 'Maximum 100 IDs per batch').describe('Array of to-do IDs to update'),
+  updates: z.object({
+    when: z.union([WhenEnum, DateString, DateTimeString]).optional().describe('Set when to schedule todos: today/tomorrow/evening (relative), anytime/someday (Things categories), YYYY-MM-DD (specific date)'),
+    deadline: DateString.optional().describe('Set deadline date (YYYY-MM-DD)'),
+    tags_add: z.array(z.string().max(50)).max(20).optional().describe('Tags to add to all todos'),
+    tags_remove: z.array(z.string().max(50)).max(20).optional().describe('Tags to remove from all todos'),
+    list_id: z.string().optional().describe('Move all todos to this project/area ID'),
+    list: z.string().max(255).optional().describe('Move all todos to this list by name'),
+  }).refine(data => Object.values(data).some(v => v !== undefined), {
+    message: 'At least one update field must be specified'
+  }),
 });

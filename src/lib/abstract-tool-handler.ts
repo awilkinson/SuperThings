@@ -8,7 +8,9 @@ export type ToolResponse = CallToolResult;
 export interface ToolDefinition<TParams = unknown> {
   name: string;
   description: string;
-  schema: z.ZodSchema<TParams>;
+  // Use ZodTypeAny because handlers often have multiple tools with different schema types
+  // Runtime validation still works correctly via schema.parse() in handle()
+  schema: z.ZodType<TParams> | z.ZodTypeAny;
 }
 
 export abstract class AbstractToolHandler<TParams = unknown> {
