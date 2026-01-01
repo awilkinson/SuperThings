@@ -148,7 +148,16 @@ Runs on Haiku, but **auto-escalates to Sonnet** when hitting speedbumps:
    - Sets `when` to future date, removes from inbox
    - Item reappears in Today on the scheduled date
 
-7. **Execute updates** using `mcp__SuperThings__things_update_todo` for approved items
+7. **Save undo state** BEFORE executing updates:
+   ```bash
+   # Save pre-triage state for undo capability
+   echo '[
+     {"id":"ID1","original_title":"ORIG1","original_list":"inbox"},
+     {"id":"ID2","original_title":"ORIG2","original_list":"inbox"}
+   ]' > ~/Projects/SuperThings/data/last_triage.json
+   ```
+
+8. **Execute updates** using `mcp__SuperThings__things_update_todo` for approved items
 
    **For snoozed items**, calculate the date and update:
    ```
@@ -161,7 +170,7 @@ Runs on Haiku, but **auto-escalates to Sonnet** when hitting speedbumps:
    # 1w = 7 days, 2w = 14 days, 1m = 30 days
    ```
 
-8. **MANDATORY: Log and Learn** - After executing updates, you MUST:
+9. **MANDATORY: Log and Learn** - After executing updates, you MUST:
 
    a) **Append to history.jsonl** - For EACH processed item:
    ```bash
@@ -241,6 +250,32 @@ The learning happens in Step 7 above. Here's how patterns work:
 
 To see past decisions: `cat ~/Projects/SuperThings/data/history.jsonl | tail -20`
 
+## Undo Last Triage
+
+If user says "undo" or "revert", restore the last triage batch:
+
+1. **Read last_triage.json**:
+   ```bash
+   cat ~/Projects/SuperThings/data/last_triage.json
+   ```
+
+2. **For each item**, restore original state:
+   ```
+   mcp__SuperThings__things_update_todo with:
+     id: <item_id>
+     title: <original_title>
+     list: "inbox"  # Move back to inbox
+   ```
+
+3. **Confirm to user**: "Reverted N items to their original state"
+
+4. **Clear the undo file** after successful revert:
+   ```bash
+   echo '[]' > ~/Projects/SuperThings/data/last_triage.json
+   ```
+
+**Note:** Only the LAST triage batch can be undone. Running a new triage overwrites the undo state.
+
 ## Execution
 
 Now execute the triage workflow:
@@ -248,6 +283,7 @@ Now execute the triage workflow:
 2. **Fetch inbox** - Call `mcp__SuperThings__things_get_inbox` (server handles caching)
 3. Apply learned patterns when generating suggestions
 4. Show `[learned: Nx]` for pattern-based suggestions
-5. After user confirms, log to history.jsonl and update patterns.json
-6. Keep responses concise to save context
-7. Launch parallel haiku agents for URL resolution
+5. Save undo state before executing
+6. After user confirms, log to history.jsonl and update patterns.json
+7. Keep responses concise to save context
+8. Launch parallel haiku agents for URL resolution

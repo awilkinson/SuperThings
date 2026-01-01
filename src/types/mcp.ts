@@ -137,3 +137,12 @@ export const AddItemsToProjectSchema = z.object({
   items: z.array(ProjectItemSchema).min(1, 'At least one item required').max(200, 'Too many items').describe('Add structured todos and headings to an existing project. Items are added as a flat array where headings act as visual separators. Todos that follow a heading will appear grouped under it. Example: [{type: \'heading\', title: \'Phase 2\'}, {type: \'todo\', title: \'Task 1\'}, {type: \'todo\', title: \'Task 2\'}].'),
   operation: z.literal('update').default('update')
 });
+
+// Search schema for finding todos across lists
+export const SearchTodosSchema = z.object({
+  query: z.string().optional().describe('Keyword to search for in todo titles. Use "*" or omit to match all.'),
+  list: z.enum(['inbox', 'today', 'anytime', 'upcoming', 'someday', '']).optional().describe('Filter by specific list. Omit to search all lists.'),
+  tag: z.string().optional().describe('Filter by tag name'),
+  has_url: z.boolean().optional().describe('Set to true to only return todos with URLs in the title'),
+  max_results: z.number().max(500).optional().describe('Maximum number of results to return (default: 100, max: 500)'),
+});
